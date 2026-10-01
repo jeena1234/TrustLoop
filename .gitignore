@@ -1,0 +1,28 @@
+.DS_Store
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment variables / API keys
+.env
+
+# Local datasets
+data/*
+!data/.gitkeep
+
+# Local model files
+models/*
+!models/.gitkeep
+
+# Generated results
+results/*
+!results/.gitkeep
+
