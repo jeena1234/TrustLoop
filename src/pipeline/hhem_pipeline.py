@@ -1,59 +1,42 @@
 import pandas as pd
 
 from src.models.hhem_model import load_hhem_model, get_hhem_score
-from src.data.prepare_data import prepare_hhem_data
-BATCH_SIZE = 32
-
-# Load prepared dataset
-df_hhem_validate, df_hhem_test = prepare_hhem_data()
-
-
-#####  Load HHEM Model
-model = load_hhem_model()
-
-# context_validate = df_hhem_validate.iloc[:100]["passages"]
-# response_validate = df_hhem_validate.iloc[:100]["response"]
 
 
 
-#### create batches for full data processing
+def run_hhem_pipeline(df_input,batch_size = 32):
+  
+  ####  Load HHEM Model
+  model = load_hhem_model()
 
-scores = []
-for start in range(0, len(df_hhem_validate), BATCH_SIZE):
-    end = start + BATCH_SIZE
-    batch = df_hhem_validate.iloc[start:end]
-    score = get_hhem_score(
-                model, 
-                batch["passages"].tolist(), 
-                batch["response"].tolist()
-                )
-    scores.extend(score)
+  #### create batches for full data processing
 
-
-### Add scores to the new datafame 
-df_hhem_scored = df_hhem_validate.copy()
-df_hhem_scored["hhem_score"] = scores
-
-
-
-## Test data
-# context_test = df_hhem_test.iloc[:100]["passages"]
-# response_test = df_hhem_test.iloc[:100]["response"]
+  scores = []
+  for start in range(0, len(df_input), batch_size):
+      end = start + batch_size
+      batch = df_input.iloc[start:end]
+      score = get_hhem_score(
+                  model, 
+                  batch["passages"].tolist(), 
+                  batch["response"].tolist()
+                  )
+      scores.extend(score)
 
 
+  ### Add scores to the new datafame 
+  df_hhem_scored = df_input.copy()
+  df_hhem_scored["hhem_score"] = scores
+
+  df_hhem_scored["hhem_label"] = df_hhem_scored["hhem_score"].apply(lambda x: 
+                                                                    "GROUNDED" if x >= 0.90 
+                                                                    else "GREY ZONE" if x >= 0.40 
+                                                                    else "HALLUCINATED")
 
 
+  ## Just for analysis export to csv
+  df_hhem_scored.to_csv(
+    "/content/drive/MyDrive/TrustLoop/results/hhem_scored_stage1_results.csv",
+    index=False
+  )
 
-
-# get scores for 
-# scores = get_hhem_score(model, context_validate, response_validate)
-
-# df_validate_sample = df_hhem_validate.iloc[:100].copy()
-# df_validate_sample["hhem_score"] = scores
-
-# print(
-#     df_validate_sample[
-#         ["source_id", "hallucination_label", "hhem_score"]
-#     ].head(20)
-# )
-
+  return df_hhem_scored
