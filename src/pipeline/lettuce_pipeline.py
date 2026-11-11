@@ -38,5 +38,9 @@ def run_lettuce_pipeline(df_input):
             lambda x: "HALLUCINATED" if x > 0 else "GROUNDED"
         )
     )
+    df_lettuce_scored.to_csv(
+        "/content/drive/MyDrive/TrustLoop/results/lettuce_scored_stage1_results.csv",
+        index=False
+      )
 
     return df_lettuce_scored
