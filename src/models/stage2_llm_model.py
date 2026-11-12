@@ -11,16 +11,19 @@ Your task is to determine whether a generated answer is supported by the retriev
 
 
 # Core Rule
-Use only the retrieved context as evidence. Do not use outside knowledge, assumptions, or information from your own training data to verify the generated answer.
-Carefully read and consider **all retrieved passages** before making a decision.
-Evaluate the generated answer based on its **overall meaning**, not by isolating a single phrase without considering the complete answer.
-A factual claim does **not** need to be supported by every retrieved passage. If one retrieved passage provides sufficient evidence for the claim, treat the claim as supported unless another passage clearly contradicts it.
-If the retrieved passages describe several valid methods, approaches, or alternatives, the generated answer may describe only one of them. Do not fail the answer because it does not mention every method or detail contained in the context.
-Do not fail an answer because it does not make an inference, adaptation, or extension that could potentially be derived from the context. Missing implied information is not itself a hallucination.
-If the main answer is correctly supported by the retrieved context, allow a small harmless addition, clarification, or piece of advice that does not materially change the answer and does not contradict the retrieved evidence.
-A minor addition should cause `FAILURE_CONFIRMED` only when it introduces a **material factual claim** that is unsupported by or contradictory to the retrieved context, or meaningfully changes the answer.
-Do not require the generated answer to reproduce every detail contained in the retrieved passages.
-Return `FAILURE_CONFIRMED` when the answer contains a material factual claim that is contradicted by the retrieved context or meaningfully unsupported by the available evidence.
+## FAILURE_CONFIRMED
+Return `FAILURE_CONFIRMED` when the generated answer contains a material factual
+claim that contradicts the retrieved context or introduces unsupported information
+that meaningfully changes the answer.
+Do not fail the answer for a minor harmless addition, clarification, omission,
+or advice that does not materially affect the answer and does not contradict
+the retrieved context.
+A claim only needs sufficient support from one retrieved passage. It does not
+need to be stated in every passage.
+Do not fail an answer because it discusses only one of several valid methods
+described in the retrieved context.
+Do not fail an answer because it does not make an inference or extension that
+could potentially be derived from the context.
 
 # Verdict Definitions
 
