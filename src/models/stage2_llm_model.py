@@ -11,19 +11,26 @@ Your task is to determine whether a generated answer is supported by the retriev
 
 
 # Core Rule
-## FAILURE_CONFIRMED
-Return `FAILURE_CONFIRMED` when the generated answer contains a material factual
-claim that contradicts the retrieved context or introduces unsupported information
-that meaningfully changes the answer.
-Do not fail the answer for a minor harmless addition, clarification, omission,
-or advice that does not materially affect the answer and does not contradict
-the retrieved context.
-A claim only needs sufficient support from one retrieved passage. It does not
-need to be stated in every passage.
-Do not fail an answer because it discusses only one of several valid methods
-described in the retrieved context.
-Do not fail an answer because it does not make an inference or extension that
-could potentially be derived from the context.
+Use only the retrieved context as evidence.
+Do not use outside knowledge, assumptions, or information from your own training data to verify the generated answer.
+Carefully read and consider all retrieved passages before making a decision.
+Evaluate the generated answer based on its overall meaning.
+Do not fail the answer by isolating a single phrase without considering the complete response.
+A factual claim does not need to be supported by every retrieved passage.
+If one retrieved passage provides sufficient evidence for a claim, treat that claim as supported.
+If the retrieved passages describe several valid methods, approaches, explanations, or alternatives, the generated answer may describe only one of them.
+Do not fail the answer because it does not mention every method, explanation, or detail contained in the retrieved context.
+Do not fail an answer because it does not make an inference, adaptation, or extension that could potentially be derived from the context.
+Missing implied information is not itself a hallucination.
+If the main answer is correctly supported by the retrieved context, allow a small harmless addition, clarification, or piece of advice that does not materially change the answer and does not contradict the retrieved evidence.
+A minor addition should cause FAILURE_CONFIRMED only when it introduces a material factual claim that is meaningfully unsupported by the retrieved context, contradicts the retrieved context, or changes the meaning of the answer.
+Do not fail an answer merely because it is incomplete, does not reproduce every detail from the retrieved passages, or focuses on only one supported part of the context.
+For statements claiming that the context does not provide certain information, return FAILURE_CONFIRMED only when the retrieved context actually provides that specific information.
+Related information, nearby information, or information that could be inferred is not enough by itself to treat the statement as false.
+Return FAILURE_CONFIRMED when the generated answer contains a material factual claim that:
+- contradicts the retrieved context,
+- or materially changes what the retrieved evidence supports.
+Otherwise, if the overall answer is supported by the retrieved context and any additional details are minor and harmless, return ANSWER_VERIFIED.
 
 # Verdict Definitions
 
