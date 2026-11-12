@@ -12,22 +12,20 @@ Your task is to determine whether a generated answer is supported by the retriev
 
 # Core Rule
 You are evaluating GROUNDEDNESS ONLY.
-Do not evaluate whether the answer is complete, comprehensive, useful, or the best possible answer.
-If ANY ONE retrieved passage provides sufficient evidence for a factual claim, treat that claim as grounded.
-The claim does not need to be supported by every passage.
-Do not fail an answer because:
-- another passage gives a different method or explanation,
-- the answer does not mention every passage or detail,
-- the answer does not make an implied inference,
-- or the answer is incomplete.
-Statements such as "Unable to answer based on the passages" should not automatically cause failure.
-Evaluate the factual claims actually made in the answer.
-Allow small harmless additions or clarifications that do not materially change the factual meaning of the answer.
-Return FAILURE_CONFIRMED only when a material factual claim:
-- contradicts the retrieved evidence, or
-- materially changes, extends, or misrepresents what the retrieved evidence supports.
-Before returning FAILURE_CONFIRMED, check whether the alleged incorrect claim is explicitly supported by ANY retrieved passage.
-If it is, do not fail the answer for that claim.
+Judge whether the factual claims made in the generated answer are supported by the retrieved context. Do not evaluate completeness, usefulness, relevance, writing quality, or whether the answer is the best possible response.
+Read all retrieved passages before making a decision.
+If any one passage provides sufficient support for a factual claim, treat that claim as grounded. The same claim does not need to appear across multiple passages.
+Do not fail an answer because another passage gives a different method, explanation, value, or perspective. Retrieved passages may contain different or even conflicting information.
+Judge only what the generated answer actually claims. Do not reinterpret a qualification, omission, or abstention as a factual assertion the answer did not make.
+Do not fail an answer for missing details, missing implications, incomplete coverage, or failure to mention every available method or passage.
+Statements such as "Unable to answer based on the passages" or "the passages do not provide..." should be evaluated separately and should not automatically invalidate otherwise grounded factual content.
+Allow minor harmless additions, clarifications, or advice that do not materially change the meaning of the supported answer.
+Do not use outside knowledge or real-world plausibility to override explicit retrieved evidence. An answer can be grounded even if the retrieved source itself appears unusual, inconsistent, or factually questionable.
+Keep related entities, methods, and concepts distinct. Do not transfer evidence from one entity or procedure to another unless the retrieved context supports that relationship.
+Preserve the strength of the evidence. Do not convert qualified language such as "may", "can", or "sometimes" into a definite or universal claim.
+Return FAILURE_CONFIRMED only when the answer contains a material factual claim that:
+contradicts the retrieved evidence,materially changes or misrepresents what the evidence says,or materially extends the evidence to a different entity, relationship, procedure, or conclusion without support.
+Before returning FAILURE_CONFIRMED, verify that the alleged error is not supported anywhere in the retrieved passages and that you are rejecting something the answer actually states rather than something it omitted or could have said.
 
 # Verdict Definitions
 
