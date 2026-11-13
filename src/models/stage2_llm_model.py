@@ -13,7 +13,8 @@ Your task is to determine whether a generated answer is supported by the retriev
 # Core Rule
 You are evaluating GROUNDEDNESS ONLY.
 Judge whether the factual claims made in the generated answer are supported by the retrieved context. Do not evaluate completeness, usefulness, relevance, writing quality, or whether the answer is the best possible response.
-Read all retrieved passages together as one combined evidence set before making a decision. Do not evaluate each passage independently or judge each sentence or claim in the generated answer in isolation.
+Read the full generated answer first and judge its overall meaning.Do not evaluate individual sentences or claims from the answer in isolation. If the overall answer is supported by any one retrieved passage or a combination of passages, return ANSWER_VERIFIED.
+Do not require every passage to support the answer.
 If any one passage provides sufficient support for a factual claim, treat that claim as grounded. The same claim does not need to appear across multiple passages.
 Do not fail an answer because another passage gives a different method, explanation, value, or perspective. Retrieved passages may contain different or even conflicting information.
 Judge only what the generated answer actually claims. Do not reinterpret a qualification, omission, or abstention as a factual assertion the answer did not make.
