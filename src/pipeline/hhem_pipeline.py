@@ -29,7 +29,7 @@ def run_hhem_pipeline(df_input,batch_size = 32):
 
   df_hhem_scored["hhem_label"] = df_hhem_scored["hhem_score"].apply(lambda x: 
                                                                     "GROUNDED" if x >= 0.90 
-                                                                    else "GREY ZONE" if x >= 0.40 
+                                                                    else "GREY ZONE" if x >= 0.50 
                                                                     else "HALLUCINATED")
 
 
