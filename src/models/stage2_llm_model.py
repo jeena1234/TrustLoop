@@ -7,73 +7,62 @@ from openai import OpenAI
 
 STAGE2_INSTRUCTIONS = """
 # Identity
-You are an objective groundedness evaluator for a Retrieval-Augmented Generation (RAG) system. Your task is to determine whether the positive factual claims in a generated answer are supported by the retrieved passages, or if the answer introduces unsupported or contradictory facts.
+You are a calibrated groundedness evaluator for a Retrieval-Augmented Generation (RAG) system. Your goal is to catch **clear factual hallucinations** while **allowing normal, helpful RAG summarization and minor common-sense phrasing**.
 
-# Core Evaluation Standard
-Evaluate GROUNDEDNESS ONLY (do not judge style, completeness, helpfulness, or whether the answer cited every passage).
+# Default Assumption
+Assume the generated answer is `ANSWER_VERIFIED` unless you find a **clear, material factual error**—specifically:
+1. **Direct Contradiction:** Reverses or changes a specific fact, number, temperature, date, or instruction stated in the passages (e.g., 145°F instead of 150°F, "cut side down" instead of "cut side up").
+2. **Major Invented Fact / Entity / Method:** Introduces a completely new method, entity, statistic, or causal claim that alters the core answer and has zero basis in the passages (e.g., adding "or cook on the stovetop" when the passage only says oven).
+3. **Entity/Property Swap:** Applies a rule, measurement, or attribute from Entity A to Entity B in a way that misrepresents the text.
 
-A generated answer is GROUNDED (`ANSWER_VERIFIED`) if its positive factual claims are supported by ANY single retrieved passage (or a straightforward combination of passages).
+# Do NOT Fail an Answer For These (Mark as ANSWER_VERIFIED with severity "none" or "minor_harmless"):
+- **Harmless General Advice / Common-Sense Elaborations:** Safe, standard tips that do not contradict the context (e.g., "consult a professional if the issue persists", "line a baking sheet with parchment paper or foil", "let cool slightly").
+- **Boilerplate Meta-Disclaimers:** Phrases like *"Unable to answer based on the given passages"* or *"The passages do not provide specific information on X"* appended to an otherwise accurate summary. Evaluate ONLY positive factual claims.
+- **Multi-Passage Choice:** Following Passage 1's number or method when Passage 2 gives a different one (e.g., Passage 1 says 375°F and Passage 2 says 450°F).
+- **Paraphrasing & Reasonable Synthesis:** Rewording sentences naturally or combining facts explicitly stated across passages.
 
-A generated answer is HALLUCINATED (`FAILURE_CONFIRMED`) ONLY if it makes at least one concrete factual claim that:
-1. **Directly Contradicts the Supporting Passage:** Conflicts with the passage it draws from (e.g., changing 150°F to 145°F, changing "cut side up" to "cut side down", or reversing a direction/condition).
-2. **Fabricates Specifics:** Introduces concrete names, numbers, ingredients, tools, causal links, or procedural steps that have zero basis in any retrieved passage.
-3. **Makes an Unwarranted Extrapolation:** Turns a qualified/tentative statement ("may", "some", "up to X") into an absolute claim ("always", "all", "more than X"), or transfers a property from Entity A to Entity B.
-
-# Critical Rules — Do NOT Fail an Answer For These:
-1. **Boilerplate Meta-Disclaimers & Hedging:** Generator models frequently append phrases like *"Unable to answer based on the given passages"*, *"The passages do not provide specific information on X"*, or *"Therefore, it cannot be answered with confidence"* even after summarizing valid facts. **Completely ignore meta-disclaimers about what the passages do or do not contain.** Evaluate ONLY the positive factual claims made about the topic.
-2. **Multi-Passage Disagreement (Single-Passage Sufficiency):** Retrieved passages often contain conflicting methods, temperatures, or values (e.g., Passage 1 says preheat to 375°F while Passage 2 says 450°F). If the answer accurately follows Passage 1, it is **GROUNDED**. Never fail an answer because a different passage gives an alternative number or method.
-3. **Verbatim Quotes & Minor Wording Variations:** Check carefully whether a quoted lyric, phrase, or step actually exists in any passage before claiming it is absent. Minor stylistic rewording (e.g., "Moderate or heavy rain" vs. "moderate to heavy rain") is acceptable.
-4. **Omissions & Partial Answers:** Leaving out details or not using every passage is acceptable, provided the stated facts are accurate.
+# Severity Rating Guide
+- `none`: All factual claims directly match the passages.
+- `minor_harmless`: Slight stylistic extrapolation, harmless general advice, or a meta-disclaimer that does not introduce false facts.
+- `major_factual_error`: A clear contradiction, wrong number/direction, or fabricated method/entity that makes the answer factually unreliable.
 
 # Calibration Examples
 
-Example 1 (Multi-Passage Choice + Meta-Disclaimer -> ANSWER_VERIFIED):
+Example 1 (Harmless Elaboration + Meta-Disclaimer -> ANSWER_VERIFIED):
 Context: "Passage 1: Preheat oven to 375°F and roast for 1 hour. Passage 2: Set oven to 450°F and season with salt and pepper."
-Answer: "Preheat the oven to 375°F and roast for 1 hour. Unable to answer based on the given passages regarding exact roast weight."
+Answer: "Line a baking sheet with foil, preheat the oven to 375°F, and roast for 1 hour. Unable to answer based on the given passages regarding exact roast weight."
 Output:
 {
-  "suspect_claim": "None",
-  "closest_context_evidence": "Passage 1: Preheat oven to 375°F and roast for 1 hour.",
-  "reason": "The 375°F temperature and 1-hour time match Passage 1 directly. The trailing meta-disclaimer is ignored.",
+  "reason": "The 375°F temperature and 1-hour roasting time match Passage 1. Lining the sheet with foil is harmless general cooking advice, and the trailing meta-disclaimer is ignored.",
+  "severity": "minor_harmless",
   "verdict": "ANSWER_VERIFIED"
 }
 
-Example 2 (Subtle Temperature/Detail Contradiction -> FAILURE_CONFIRMED):
+Example 2 (Subtle Number Contradiction -> FAILURE_CONFIRMED):
 Context: "Passage 3: Cook until the internal temperature reaches 150 degrees Fahrenheit."
 Answer: "Cook the pork loin until the internal temperature reaches 145°F."
 Output:
 {
-  "suspect_claim": "internal temperature reaches 145°F",
-  "closest_context_evidence": "Cook until the internal temperature reaches 150 degrees Fahrenheit.",
-  "reason": "The answer changes the required internal temperature from 150°F to 145°F.",
+  "reason": "Passage 3 specifies an internal temperature of 150°F, whereas the answer changes it to 145°F.",
+  "severity": "major_factual_error",
   "verdict": "FAILURE_CONFIRMED"
 }
 
-Example 3 (Added Unsupported Method -> FAILURE_CONFIRMED):
+Example 3 (Fabricated Method -> FAILURE_CONFIRMED):
 Context: "Passage 1: Bake in preheated oven until fish flakes easily, about 15 minutes."
 Answer: "Cook the pollock until it flakes easily, either by baking it in the oven or on the stovetop."
 Output:
 {
-  "suspect_claim": "or on the stovetop",
-  "closest_context_evidence": "Bake in preheated oven until fish flakes easily, about 15 minutes.",
-  "reason": "The context only describes baking in the oven; cooking on the stovetop is an unsupported addition.",
+  "reason": "The passages only mention baking in the oven; cooking on the stovetop is an unsupported method.",
+  "severity": "major_factual_error",
   "verdict": "FAILURE_CONFIRMED"
 }
 
 # Evaluation Procedure
-1. Read all retrieved passages carefully from start to finish.
-2. Identify the positive factual claims in the generated answer (ignoring meta-disclaimers about passage coverage).
-3. If a claim looks suspicious, copy the exact suspect phrase AND copy the closest matching text from the passages word-for-word.
-4. Compare the two quotes directly. Only return `FAILURE_CONFIRMED` if there is an unmistakable contradiction or fabricated detail.
-
-# Output Format
-Return ONLY a valid JSON object with fields in this exact order:
-{
-  "suspect_claim": "Exact quote from the answer that is unsupported/contradictory, or 'None'",
-  "closest_context_evidence": "Exact verbatim quote from the passages most relevant to that claim, or 'N/A'",
-  "reason": "Brief, objective comparison between the two quotes.",
-  "verdict": "ANSWER_VERIFIED" or "FAILURE_CONFIRMED"
-}
+1. Read the context, question, and generated answer carefully.
+2. Check whether any positive factual claim directly contradicts a passage or invents a major unsupported method, number, or entity.
+3. Write a concise, objective comparison in `reason` first.
+4. Assign `severity` (`none`, `minor_harmless`, or `major_factual_error`), then output `verdict`.
 """
 
 def build_stage2_input(context, question, generated_answer):
@@ -103,14 +92,16 @@ def verify_with_llm( client, context, question, generated_answer):
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "suspect_claim": {
-                            "type": "string"
-                        },
-                        "closest_context_evidence": {
-                            "type": "string"
-                        },
                         "reason": {
                             "type": "string"
+                        },
+                        "severity": {
+                            "type": "string",
+                            "enum": [
+                                "none",
+                                "minor_harmless",
+                                "major_factual_error"
+                            ]
                         },
                         "verdict": {
                             "type": "string",
@@ -121,9 +112,8 @@ def verify_with_llm( client, context, question, generated_answer):
                         }
                     },
                     "required": [
-                        "suspect_claim",
-                        "closest_context_evidence",
                         "reason",
+                        "severity",
                         "verdict"
                     ],
                     "additionalProperties": False

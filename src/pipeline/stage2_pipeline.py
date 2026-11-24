@@ -10,6 +10,7 @@ def run_stage2_pipeline(df_input,output_path="data/results/stage2/stage2_results
     client = load_stage2_client()
 
     verdicts = []
+    severities = []
     reasons = []
     latencies = [] 
     for i , row in df_stage2.iterrows():
@@ -22,20 +23,28 @@ def run_stage2_pipeline(df_input,output_path="data/results/stage2/stage2_results
         latency = time.perf_counter() - start_time
 
         verdicts.append(result["verdict"])
+        severities.append(result["severity"])
         reasons.append(result["reason"])
         latencies.append(latency)
 
         print(
             f"Processed {i + 1}/{len(df_stage2)} | "
-            f"{result['verdict']} | "
+            f"{result['verdict']} ({result['severity']}) | "
             f"{latency:.2f}s"
         )
 
     df_stage2["stage2_verdict"] = verdicts
+    df_stage2["stage2_severity"] = severities
     df_stage2["stage2_reasons"] = reasons
     df_stage2["stage2_latency"] = latencies
 
-    df_stage2["stage2_label"] = df_stage2["stage2_verdict"].apply(lambda x: "GROUNDED" if x== "ANSWER_VERIFIED" else "HALLUCINATED")
+    df_stage2["stage2_label"] = df_stage2.apply(
+        lambda r: "HALLUCINATED"
+        if r["stage2_verdict"] == "FAILURE_CONFIRMED"
+        and r["stage2_severity"] == "major_factual_error"
+        else "GROUNDED",
+        axis=1,
+    )
 
     df_stage2.to_csv(
     output_path,
